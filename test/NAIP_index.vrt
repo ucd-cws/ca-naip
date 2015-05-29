@@ -1,0 +1,8 @@
+<OGRVRTDataSource>
+    <OGRVRTLayer name="NAIP_index">
+        <SrcDataSource>NAIP_index.csv</SrcDataSource>
+        <GeometryType>wkbPolygon</GeometryType>
+        <LayerSRS>WGS84</LayerSRS>
+        <GeometryField encoding="WKT" field="geo" />
+    </OGRVRTLayer>
+</OGRVRTDataSource>
