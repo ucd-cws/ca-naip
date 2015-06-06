@@ -20,6 +20,7 @@ for (( i = 0 ; i < ${#naipfiles[@]} ; i++ )) do
 		if [ ${years[$i]} -eq 2005 ]; then
 			# make near infrared filename list
 			find "NAIP_${years[$i]}_DOQQ" \(  -iname 'c*.tif' \) -type f  2>/dev/null -printf "%f\n" | sort -r >> indexes/ucd_cir_${years[$i]}.csv
+			awk 'BEGIN{FS="_"; OFS=",";} NR>1 {print $0, $2FS$3, substr($6,1,8), $1}' indexes/ucd_cir_${years[$i]}.csv > indexes/ucd_cir_index_${years[$i]}.csv;
 		fi
 		#list missing files
 		if [ -e "indexes/naip_${years[$i]}.csv"  -a  -e "indexes/ucd_files_${years[$i]}.csv"  ]; then
@@ -27,21 +28,31 @@ for (( i = 0 ; i < ${#naipfiles[@]} ; i++ )) do
 			# Might as well examine these
 			comm -13  indexes/naip_${years[$i]}.csv indexes/ucd_files_${years[$i]}.csv >> indexes/naip_missing_${years[$i]}.txt
 			
-			# Start building list of filenames to join to indexes
+			# Start building list of filenames, quarterquads, and dates to join to indexes
 			#while read -r line; do echo "${line}, ${line:2:7}, ${line:10:2}, ${line:2:10}, ${line:18:8}"  >> indexes/ucd_index_${years[$i]}.csv; done < indexes/ucd_files_${years[$i]}.csv
-			awk 'BEGIN{FS="_"; OFS=", ";} NR>1 {print $0, $2FS$3, $2, substr($2,6,2), $3, substr($6,1,8)}' indexes/ucd_files_${years[$i]}.csv > indexes/ucd_index_${years[$i]}.csv;
+			awk 'BEGIN{FS="_"; OFS=",";} NR>1 {print $0, $2FS$3, substr($6,1,8), $1}' indexes/ucd_files_${years[$i]}.csv > indexes/ucd_index_${years[$i]}.csv;
 		fi
 	fi
 done
 
 # Get quarterquadrants from all files and remove duplicates based on the 4rth column (usgis quad identifier and quarter quadrant)
-sort -t, -uk2 indexes/ucd_index*.csv |  awk 'BEGIN{FS=","; OFS=",";}{print $2, $3, $4, $5, $6}' > indexes/qtrquad_index
+sort -t, -uk2 indexes/ucd_index*.csv |  awk 'BEGIN{FS=","; OFS=",";}{print $2}' > indexes/qtrquad_index
 
 # build indexes
 # first write a csv creating the coordinates of the bounding polygons and some attribures from the filename
 python indexes/buildIndex2.py
 # build a shapefile 
-ogr2ogr -f "ESRI Shapefile" -overwrite indexes/NAIP_index.shp indexes/NAIP_index.vrt
+ogr2ogr -f "ESRI Shapefile" -overwrite indexes/NAIP_index_0.shp indexes/NAIP_index.vrt
 
+j=0
+for (( i = 0 ; i < ${#years[@]} ; i++ )) do
+	if [ -e "indexes/ucd_index_${years[$i]}.csv"  ]; then
+		ogr2ogr -overwrite -sql "select cell, quad_cell, quad_qdrnt, usgs_cell, degrees, qtrquad, field_4 as color_${years[$i]}, field_3 as date_${years[$i]}, field_1 as fname_${years[$i]} from NAIP_Index_$j left join 'indexes/ucd_index_${years[$i]}.csv'.ucd_index_${years[$i]} on NAIP_index_$j.quad_qdrnt = ucd_index_${years[$i]}.field_2" indexes/NAIP_index_${j+1}.shp indexes/NAIP_index_$j.shp
+		((j+=1))
+	fi
+	if [ -e "indexes/ucd_cir_index_${years[$i]}.csv"  ]; then
+		ogr2ogr -overwrite -sql "select cell, quad_cell, quad_qdrnt, usgs_cell, degrees, qtrquad, field_4 as cir_cl${years[$i]}, field_3 as cir_dt${years[$i]}, field_1 as cir_fn${years[$i]} from NAIP_Index_$j left join 'indexes/ucd_cir_index_${years[$i]}.csv'.ucd_cir_index_${years[$i]} on NAIP_index_$j.quad_qdrnt = ucd_cir_index_${years[$i]}.field_2" indexes/NAIP_index_${j+1}.shp indexes/NAIP_index_$j.shp
+		((j+=1))
+	fi
+done
 
-# finish - ogr2ogr -sql "select NAIP_index.*, ucd_index_${years[$i]}.* from NAIP_Index.shp left join 'ucd_index_${years[$i]}.csv'.joincsv on NAIP_index.quad_qdrnt = ucd_index_${years[$i]}.quad_qdrnt" NAIP_index_1.shp NAIP_index.shp
