@@ -52,7 +52,14 @@ for (( i = 0 ; i < ${#years[@]} ; i++ )) do
 	fi
 	if [ -e "indexes/ucd_cir_index_${years[$i]}.csv"  ]; then
 		ogr2ogr -overwrite -sql "select cell, quad_cell, quad_qdrnt, usgs_cell, degrees, qtrquad, field_4 as cir_cl${years[$i]}, field_3 as cir_dt${years[$i]}, field_1 as cir_fn${years[$i]} from NAIP_Index_$j left join 'indexes/ucd_cir_index_${years[$i]}.csv'.ucd_cir_index_${years[$i]} on NAIP_index_$j.quad_qdrnt = ucd_cir_index_${years[$i]}.field_2" indexes/NAIP_index_${j+1}.shp indexes/NAIP_index_$j.shp
+		#get rid of all intermediate indexes but save the _0 one, in case this needs to be rebuilt!
+		if [ j > 0 ]; then
+			rm indexes/NAIP_index_${j}.*
+		fi
 		((j+=1))
 	fi
 done
-
+# rename to NAIP_index.shp
+ogr2ogr -overwrite indexes/NAIP_index.shp indexes/NAIP_index_$j.shp
+rm indexes/NAIP_index_${j}.*
+rm indexes/*.csv.bak
