@@ -17,10 +17,10 @@ for (( i = 0 ; i < ${#naipfiles[@]} ; i++ )) do
 	if [ -d "NAIP_${years[$i]}_DOQQ" ]; then
 		echo "filename," >  indexes/ucd_files_${years[$i]}.csv
 		find "NAIP_${years[$i]}_DOQQ" \(  -iname 'n*.tif' -o -iname 'm*.tif' \) -type f  2>/dev/null -printf "%f\n" | sort -r >> indexes/ucd_files_${years[$i]}.csv
-		if [ ${years[$i]} -eq 2005 ]; then
+		if [ ${years[$i]} -eq 2005  -a ! -e "indexes/ucd_cir_${years[$i]}.csv"  ]; then
 			# make near infrared filename list
 			find "NAIP_${years[$i]}_DOQQ" \(  -iname 'c*.tif' \) -type f  2>/dev/null -printf "%f\n" | sort -r >> indexes/ucd_cir_${years[$i]}.csv
-			awk 'BEGIN{FS="_"; OFS=",";} NR>1 {print $0, $2FS$3, substr($6,1,8), $1}' indexes/ucd_cir_${years[$i]}.csv > indexes/ucd_cir_index_${years[$i]}.csv;
+			awk 'BEGIN{FS="_"; OFS=",";} {print $0, $2FS$3, substr($6,1,8), $1}' indexes/ucd_cir_${years[$i]}.csv > indexes/ucd_cir_index_${years[$i]}.csv;
 		fi
 		#list missing files
 		if [ -e "indexes/naip_${years[$i]}.csv"  -a  -e "indexes/ucd_files_${years[$i]}.csv"  ]; then
